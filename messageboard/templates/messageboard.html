@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Viestiseinä</title>
+    <script>
+        function fetchMessages() {
+            fetch('/get_approved_messages/')
+            .then(response => response.json())
+            .then(data => {
+                let messagesList = document.getElementById("messages-list");
+                messagesList.innerHTML = "";  // Tyhjennetään lista ennen uusien lisäämistä
+                data.messages.forEach(msg => {
+                    let listItem = document.createElement("li");
+                    listItem.innerHTML = `<b>${msg.username}</b>: ${msg.text}`;
+                    messagesList.appendChild(listItem);
+                });
+            })
+            .catch(error => console.error("Viestien lataaminen epäonnistui:", error));
+        }
+
+        // Päivittää hyväksytyt viestit 10 sekunnin välein ilman että lomake katoaa
+        setInterval(fetchMessages, 10000);
+
+        // Lataa viestit heti kun sivu avataan
+        window.onload = fetchMessages;
+    </script>
+</head>
+<body>
+    <h1>Viestiseinä</h1>
+
+    <h2>Jätä uusi viesti:</h2>
+    <form method="post">
+        {% csrf_token %}
+        <label for="username">Nimimerkki:</label>
+        <input type="text" id="username" name="username" required>
+        <br>
+        <label for="text">Viestisi:</label>
+        <textarea id="text" name="text" required></textarea>
+        <br>
+        <button type="submit">Lähetä</button>
+    </form>
+
+    <h2>Hyväksytyt viestit:</h2>
+    <ul id="messages-list">
+        {% for message in messages %}
+            <li><b>{{ message.username }}</b>: {{ message.text }}</li>
+        {% empty %}
+            <li>Ei viestejä.</li>
+        {% endfor %}
+    </ul>
+</body>
+</html>

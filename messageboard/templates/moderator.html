@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moderaattorin hallinta</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background-color: #f8f9fa;
+            padding: 10px;
+            box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .container {
+            margin-top: 80px;
+            display: flex;
+            gap: 20px;
+        }
+        .column {
+            width: 50%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            background-color: #ffffff;
+        }
+        .message-item {
+            padding: 5px;
+            border-bottom: 1px solid #ddd;
+        }
+        button {
+            margin: 5px 0;
+        }
+    </style>
+<script>
+    function getCSRFToken() {
+        return document.cookie.split('; ')
+            .find(row => row.startsWith('csrftoken='))
+            ?.split('=')[1];
+    }
+
+    function fetchApprovedMessages() {
+        fetch("/get_approved_messages/")
+        .then(response => response.json())
+        .then(data => {
+            let messagesList = document.getElementById("published-messages");
+            messagesList.innerHTML = "";
+            data.messages.forEach(msg => {
+                let listItem = document.createElement("li");
+                listItem.setAttribute("data-id", msg.id);
+                listItem.innerHTML = `<b>${msg.username}</b>: ${msg.text} 
+                    <button onclick="deleteMessage(${msg.id})">Poista</button>`;
+                messagesList.appendChild(listItem);
+            });
+        })
+        .catch(error => console.error("Virhe hyväksyttyjen viestien lataamisessa:", error));
+    }
+
+    function fetchPendingMessages() {
+        fetch("/get_pending_messages/")
+        .then(response => response.json())
+        .then(data => {
+            let messagesList = document.getElementById("pending-messages");
+            messagesList.innerHTML = "";
+            data.messages.forEach(msg => {
+                let listItem = document.createElement("li");
+                listItem.setAttribute("data-id", msg.id);
+                listItem.innerHTML = `<b>${msg.username}</b>: ${msg.text} 
+                    <button onclick="approveMessage(${msg.id})">Hyväksy</button>
+                    <button onclick="deleteMessage(${msg.id})">Poista</button>`;
+                messagesList.appendChild(listItem);
+            });
+        })
+        .catch(error => console.error("Virhe julkaisemattomien viestien lataamisessa:", error));
+    }
+
+    function approveMessage(messageId) {
+        console.log("Hyväksytään viesti ID:", messageId);
+
+        fetch(`/approve/${messageId}/`, {
+            method: 'POST',
+            headers: {
+                "X-CSRFToken": getCSRFToken(),
+                "Content-Type": "application/json"
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === "approved") {
+                fetchApprovedMessages();
+                fetchPendingMessages();
+            } else {
+                alert("Viestin hyväksyminen epäonnistui.");
+            }
+        })
+        .catch(error => alert("Virhe hyväksyttäessä viestiä."));
+    }
+
+    function deleteMessage(messageId) {
+        console.log("Poistetaan viesti ID:", messageId);
+
+        fetch(`/delete/${messageId}/`, {
+            method: 'DELETE',
+            headers: {
+                "X-CSRFToken": getCSRFToken(),
+                "Content-Type": "application/json"
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === "deleted") {
+                fetchPendingMessages();
+                fetchApprovedMessages();
+            } else {
+                alert("Viestin poistaminen epäonnistui.");
+            }
+        })
+        .catch(error => alert("Virhe poistettaessa viestiä."));
+    }
+
+    function approveAll() {
+        console.log("Hyväksytään kaikki viestit");
+
+        fetch("/approve_all/", {
+            method: 'POST',
+            headers: {
+                "X-CSRFToken": getCSRFToken(),
+                "Content-Type": "application/json"
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === "approved_all") {
+                fetchApprovedMessages();
+                fetchPendingMessages();
+            } else {
+                alert("Kaikkien viestien hyväksyminen epäonnistui.");
+            }
+        })
+        .catch(error => alert("Virhe hyväksyttäessä kaikkia viestejä."));
+    }
+
+    function deleteAllPending() {
+        console.log("Poistetaan kaikki julkaisemattomat viestit");
+
+        fetch("/delete_all_pending/", {
+            method: 'DELETE',
+            headers: {
+                "X-CSRFToken": getCSRFToken(),
+                "Content-Type": "application/json"
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === "deleted_all_pending") {
+                fetchPendingMessages();
+            } else {
+                alert("Kaikkien julkaisemattomien viestien poistaminen epäonnistui.");
+            }
+        })
+        .catch(error => alert("Virhe poistettaessa kaikkia julkaisemattomia viestejä."));
+    }
+
+    function deleteAllPublished() {
+        console.log("Poistetaan kaikki julkaistut viestit");
+
+        fetch("/delete_all_published/", {
+            method: 'DELETE',
+            headers: {
+                "X-CSRFToken": getCSRFToken(),
+                "Content-Type": "application/json"
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === "deleted_all_published") {
+                fetchApprovedMessages();
+            } else {
+                alert("Kaikkien julkaistujen viestien poistaminen epäonnistui.");
+            }
+        })
+        .catch(error => alert("Virhe poistettaessa kaikkia julkaistuja viestejä."));
+    }
+
+    setInterval(fetchPendingMessages, 5000);
+    setInterval(fetchApprovedMessages, 5000);
+</script>
+</head>
+<body>
+    <div class="header">
+        <h1>Moderaattorin hallinta</h1>
+        <p>Tervetuloa, <b>{{ user.username }}</b>! 
+            <a href="{% url 'logout' %}">Kirjaudu ulos</a>
+        </p>
+    </div>
+
+    <div class="container">
+        <div class="column">
+            <h2>Julkaisemattomat</h2>
+            <button onclick="approveAll()">Julkaise kaikki</button>
+            <button onclick="deleteAllPending()">Poista kaikki</button>
+            <ul id="pending-messages"></ul>
+        </div>
+
+        <div class="column">
+            <h2>Julkaistut</h2>
+            <button onclick="deleteAllPublished()">Poista kaikki julkaistut</button>
+            <ul id="published-messages"></ul>
+        </div>
+    </div>
+</body>
+</html>
