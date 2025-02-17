@@ -45,7 +45,7 @@ def message_board(request):
 # 🔹 Hakee hyväksytyt viestit JSON-muodossa (AJAX-päivitystä varten)
 def get_approved_messages(request):
     messages = Message.objects.filter(approved=True).order_by("-timestamp")
-    messages_data = [{"username": msg.username, "text": msg.text} for msg in messages]
+    messages_data = [{"id": msg.id, "username": msg.username, "text": msg.text} for msg in messages]
     return JsonResponse({"messages": messages_data})
 
 # 🔹 Hakee julkaisemattomat viestit JSON-muodossa (Moderaattorin hallintaan)
